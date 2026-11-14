@@ -9,6 +9,7 @@ the source page.
 
 ```bash
 python3 main.py book.pdf              # same CLI as python3 booklet.py
+python3 main.py ./pdfs/               # every PDF in the folder, output in place
 python3 booklet.py book.pdf
 python3 main.py examples/sample.pdf   # 8-page sample committed in the repo
 python3 booklet.py --selftest         # zero-dependency smoke test, writes nothing
@@ -56,6 +57,11 @@ tested for g in {4, 8, 12, 20, 24, 40}. Signatures nest outward → inward.
   number of printed sides, so duplex pairing never breaks at a boundary.
 - **`-g` is a maximum**, not a target. Greedy fill by default; `--balance` evens
   the signature sizes instead (45 pages at `-g 20`: `20+20+8` vs `16+16+16`).
+- **A folder input converts every `*.pdf` inside it**, output in the same folder
+  with `--suffix` (default `-booklet`). Not recursive. The scan skips names
+  already ending with the suffix, or `<suffix>-gN.pdf`, so a second run never
+  nests outputs. One bad file is reported and the rest still run; the exit code
+  is 1 if any failed. `-o/--out` is single-file only.
 - **Duplex is flip-on-short-edge.** `--rotate-back` is for drivers that flip on
   the long edge; it rotates the back side 180°. There is no third back mode.
 - **Content stays vector** — `show_pdf_page` embeds the source as a Form XObject.

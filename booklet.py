@@ -32,6 +32,7 @@ __version__ = "0.1.0"
 
 MM = 72 / 25.4  # points per millimetre
 CROP_TICK = 3 * MM  # length of the ticks drawn by --crop-marks
+DEFAULT_SUFFIX = "-booklet"  # appended to every output name
 
 MANUAL_DUPLEX = """\
 Manual duplex (a printer without duplex):
@@ -193,6 +194,27 @@ def _save_pdf(doc: pymupdf.Document, path: Path) -> None:
         raise SystemExit(f"error: cannot write {path}: {exc}") from None
 
 
+def output_for(src: Path, suffix: str) -> Path:
+    """Plot the output next to the source, carrying the suffix."""
+    return src.with_name(f"{src.stem}{suffix}{src.suffix}")
+
+
+def _is_generated(path: Path, suffix: str) -> bool:
+    """True for a file this tool wrote, so a re-run does not nest outputs."""
+    stem = path.stem
+    if stem.endswith(suffix):
+        return True
+    base, sep, tail = stem.rpartition("-g")
+    return bool(sep) and tail.isdigit() and base.endswith(suffix)
+
+
+def _pdf_files(folder: Path, suffix: str) -> tuple[list[Path], int]:
+    """PDFs worth converting, plus how many generated files were skipped."""
+    everything = sorted(p for p in folder.iterdir() if p.is_file() and p.suffix.lower() == ".pdf")
+    files = [p for p in everything if not _is_generated(p, suffix)]
+    return files, len(everything) - len(files)
+
+
 def build(
     src_path: str,
     out_path: str,
@@ -304,10 +326,11 @@ def _manifest(
         f"  margin {margin / MM:.1f}mm  page scale {scale * 100:.1f}%"
     )
     print(f"groups : {len(groups)} signature(s){' balanced' if balance else ''}")
-    print(
-        f"output : {out_path if not split else out_path + ' (split per group)'}"
-        f"  {total_sides} printed sides"
-    )
+    target = out_path
+    if split:
+        base = Path(out_path)
+        target = str(base.with_name(f"{base.stem}-gN{base.suffix}"))
+    print(f"output : {target}  {total_sides} printed sides")
     side = 0
     for k, (start, end, group_pages, padded) in enumerate(groups, 1):
         blanks = padded - len(group_pages)
@@ -434,14 +457,40 @@ def _mm_arg(value: str) -> float:
     return mm
 
 
+def _suffix_arg(value: str) -> str:
+    if not value:
+        raise argparse.ArgumentTypeError("cannot be empty")
+    if "/" in value or "\\" in value:
+        raise argparse.ArgumentTypeError("cannot contain a path separator")
+    return value
+
+
+def _convert(src: Path, out: Path, args: argparse.Namespace) -> None:
+    build(
+        str(src),
+        str(out),
+        group=args.group,
+        mode=args.mode,
+        margin_mm=args.margin,
+        balance=args.balance,
+        rotate_back=args.rotate_back,
+        fold_line=args.fold_line,
+        crop_marks=args.crop_marks,
+        split=args.split,
+        password=args.password,
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         description="Impose a PDF as nested signatures for hand folding and sewing.",
         epilog=MANUAL_DUPLEX,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    ap.add_argument("input", nargs="?", help="source PDF")
-    ap.add_argument("-o", "--out", help="output (default: <stem>-booklet.pdf)")
+    ap.add_argument("input", nargs="?", help="source PDF, or a folder of PDFs")
+    ap.add_argument(
+        "-o", "--out", help="output path for a single file (default: <stem><suffix>.pdf)"
+    )
     ap.add_argument(
         "-g",
         "--group",
@@ -491,6 +540,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument("--password", help="password for an encrypted PDF")
     ap.add_argument(
+        "--suffix",
+        type=_suffix_arg,
+        default=DEFAULT_SUFFIX,
+        metavar="TEXT",
+        help=f"appended to each output name (default {DEFAULT_SUFFIX})",
+    )
+    ap.add_argument(
         "--selftest",
         action="store_true",
         help="check page ordering and a 20-page round-trip, write nothing",
@@ -504,23 +560,32 @@ def main(argv: list[str] | None = None) -> int:
         ap.error("the following arguments are required: input")
 
     src = Path(args.input)
+    if not src.exists():
+        raise SystemExit(f"error: no such file or folder: {src}")
+
+    if src.is_dir():
+        if args.out:
+            raise SystemExit("error: -o/--out is for a single file, not a folder")
+        files, skipped = _pdf_files(src, args.suffix)
+        if skipped:
+            print(f"skipping {skipped} generated file(s) in {src}", file=sys.stderr)
+        if not files:
+            raise SystemExit(f"error: no PDFs to convert in {src}")
+        failed = 0
+        for path in files:
+            try:
+                _convert(path, output_for(path, args.suffix), args)
+            except SystemExit as exc:
+                failed += 1
+                print(exc.code if isinstance(exc.code, str) else "error", file=sys.stderr)
+        if failed:
+            raise SystemExit(f"error: {failed} of {len(files)} file(s) failed")
+        print(f"converted {len(files)} file(s)")
+        return 0
+
     if not src.is_file():
         raise SystemExit(f"error: no such file: {src}")
-    out = Path(args.out) if args.out else src.with_name(f"{src.stem}-booklet.pdf")
-
-    build(
-        str(src),
-        str(out),
-        group=args.group,
-        mode=args.mode,
-        margin_mm=args.margin,
-        balance=args.balance,
-        rotate_back=args.rotate_back,
-        fold_line=args.fold_line,
-        crop_marks=args.crop_marks,
-        split=args.split,
-        password=args.password,
-    )
+    _convert(src, Path(args.out) if args.out else output_for(src, args.suffix), args)
     return 0
 
 

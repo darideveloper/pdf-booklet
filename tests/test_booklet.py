@@ -242,3 +242,52 @@ def test_cli_version(capsys):
         booklet.main(["--version"])
     assert exc.value.code == 0
     assert booklet.__version__ in capsys.readouterr().out
+
+
+def test_folder_converts_every_pdf(tmp_path):
+    _numbered(tmp_path / "a.pdf", 4)
+    _numbered(tmp_path / "b.pdf", 4)
+    assert booklet.main([str(tmp_path)]) == 0
+    assert (tmp_path / "a-booklet.pdf").is_file()
+    assert (tmp_path / "b-booklet.pdf").is_file()
+    assert (tmp_path / "a.pdf").is_file()
+
+
+def test_folder_skips_generated_files(tmp_path):
+    _numbered(tmp_path / "a.pdf", 4)
+    # Garbage with output names: converting either would fail, so a clean exit
+    # proves they were skipped instead of nested one level deeper.
+    (tmp_path / "a-booklet.pdf").write_bytes(b"previous run")
+    (tmp_path / "a-booklet-g1.pdf").write_bytes(b"previous split")
+
+    assert booklet.main([str(tmp_path)]) == 0
+    assert not (tmp_path / "a-booklet-booklet.pdf").exists()
+    assert pymupdf.open(str(tmp_path / "a-booklet.pdf")).page_count == 2
+
+
+def test_folder_custom_suffix(tmp_path):
+    _numbered(tmp_path / "a.pdf", 4)
+    assert booklet.main([str(tmp_path), "--suffix", "_b"]) == 0
+    assert (tmp_path / "a_b.pdf").is_file()
+
+
+def test_folder_rejects_out(tmp_path):
+    with pytest.raises(SystemExit, match="single file"):
+        booklet.main([str(tmp_path), "-o", "x.pdf"])
+
+
+def test_folder_without_pdfs(tmp_path):
+    (tmp_path / "notes.txt").write_text("hi")
+    with pytest.raises(SystemExit, match="no PDFs"):
+        booklet.main([str(tmp_path)])
+
+
+def test_folder_continues_after_a_bad_file(tmp_path, capsys):
+    _numbered(tmp_path / "good.pdf", 4)
+    (tmp_path / "bad.pdf").write_bytes(b"not a pdf")
+
+    with pytest.raises(SystemExit, match="1 of 2"):
+        booklet.main([str(tmp_path)])
+
+    assert (tmp_path / "good-booklet.pdf").is_file()
+    assert "not a readable PDF" in capsys.readouterr().err

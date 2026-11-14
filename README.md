@@ -59,7 +59,9 @@ cover sheet, which is a different binding.
 ## Usage
 
 ```bash
-python3 main.py book.pdf                     # book-booklet.pdf, groups of 20
+python3 main.py ./my-pdfs/                   # every PDF -> *-booklet.pdf, same folder
+python3 main.py ./my-pdfs/ --suffix=-book    # custom output suffix
+python3 main.py book.pdf                     # single file: book-booklet.pdf, groups of 20
 python3 main.py examples/sample.pdf          # the 8-page sample in this repo
 python3 main.py book.pdf -m full             # full-size pages on Tabloide
 python3 main.py book.pdf --split             # one PDF per group
@@ -71,9 +73,16 @@ python3 main.py book.pdf --fold-line         # faint dashed line down the middle
 python3 main.py --selftest                   # page math + round-trip, writes nothing
 ```
 
+Give it a folder and every PDF inside is imposed, output written next to each
+source with `-booklet` appended. The folder is not walked recursively, and files
+already carrying the suffix (`*-booklet.pdf`, `*-booklet-gN.pdf`) are skipped, so
+running it twice never produces `book-booklet-booklet.pdf`. If one file fails,
+the rest are still converted and the run exits `1`.
+
 | option | meaning |
 |---|---|
-| `-o/--out` | output path (default `<stem>-booklet.pdf`) |
+| `-o/--out` | output path; single file only |
+| `--suffix TEXT` | appended to each output name (default `-booklet`; use `--suffix=-x` when it starts with a dash) |
 | `-g/--group N` | max source pages per signature, multiple of 4 (default 20) |
 | `-m/--mode full\|half` | sheet geometry; `half` is the default |
 | `--margin MM` | inset each half by MM millimetres (default 0) |
@@ -86,8 +95,8 @@ python3 main.py --selftest                   # page math + round-trip, writes no
 | `--selftest` | verify ordering and a 20-page round-trip |
 | `--version` | print the version |
 
-Exit codes: `0` fine, `1` runtime error (unreadable input, unwritable output),
-`2` bad usage.
+Exit codes: `0` fine, `1` runtime error (unreadable input, unwritable output, or
+at least one failed file in folder mode), `2` bad usage.
 
 A **margined** run, for printers that cannot print to the edge: content is
 inset by `--margin`, so facing pages get a gutter of twice that margin, and the
@@ -145,6 +154,9 @@ along the spine.
   at a group boundary.
 - Landscape source pages are scaled down to fit their half and centred, with a
   warning; rotated pages (`/Rotate`) are handled by PyMuPDF.
+- Folder mode: one output per PDF, same folder, `--suffix` appended. Not
+  recursive; inputs named `*<suffix>.pdf` or `*<suffix>-gN.pdf` are treated as
+  output from an earlier run and skipped.
 - Encrypted PDFs: `--password`.
 - `--split` overwrites an existing `<stem>-gN.pdf` without asking.
 
