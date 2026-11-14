@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pymupdf
 import pytest
 
 import booklet
+
+SAMPLE = Path(__file__).resolve().parent.parent / "examples" / "sample.pdf"
 
 
 def _numbered(path, n, width=612, height=792):
@@ -182,6 +186,18 @@ def test_split_writes_one_file_per_group(tmp_path):
         "book-g2.pdf",
         "book-g3.pdf",
     ]
+
+
+def test_sample_pdf_builds(tmp_path):
+    assert SAMPLE.is_file(), f"missing sample: {SAMPLE}"
+    out = tmp_path / "sample-booklet.pdf"
+    booklet.build(str(SAMPLE), str(out), group=8)
+
+    doc = pymupdf.open(str(out))
+    assert len(doc) == 4
+    left, right = _halves(doc[0])
+    assert (left[0], right[0]) == ("8", "1"), (left, right)
+    doc.close()
 
 
 def test_open_pdf_rejects_garbage(tmp_path):

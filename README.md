@@ -60,6 +60,7 @@ cover sheet, which is a different binding.
 
 ```bash
 python3 main.py book.pdf                     # book-booklet.pdf, groups of 20
+python3 main.py examples/sample.pdf          # the 8-page sample in this repo
 python3 main.py book.pdf -m full             # full-size pages on Tabloide
 python3 main.py book.pdf --split             # one PDF per group
 python3 main.py book.pdf --balance           # even signatures instead of 20+20+8
@@ -154,6 +155,14 @@ pip install -e ".[dev]"
 pytest -q
 ruff check . && ruff format --check .
 python3 booklet.py --selftest
+```
+
+`examples/sample.pdf` is an 8-page committed sample used by the suite. To check
+the declared PyMuPDF floor without CI:
+
+```bash
+python3 -m venv /tmp/pymupdf-124 && /tmp/pymupdf-124/bin/pip install "pymupdf==1.24.*" pytest
+/tmp/pymupdf-124/bin/python -m pytest -q
 ```
 
 License: MIT.

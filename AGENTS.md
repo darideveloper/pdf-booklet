@@ -10,11 +10,19 @@ the source page.
 ```bash
 python3 main.py book.pdf              # same CLI as python3 booklet.py
 python3 booklet.py book.pdf
+python3 main.py examples/sample.pdf   # 8-page sample committed in the repo
 python3 booklet.py --selftest         # zero-dependency smoke test, writes nothing
 pytest -q                             # full suite
 ruff check . && ruff format --check . # lint and formatting
 pip install -e ".[dev]"               # dev install (pytest + ruff)
 pipx install .                        # exposes the pdf-booklet command
+```
+
+Dependency floor check (no CI, run by hand when touching PyMuPDF calls):
+
+```bash
+python3 -m venv /tmp/pymupdf-124 && /tmp/pymupdf-124/bin/pip install "pymupdf==1.24.*" pytest
+/tmp/pymupdf-124/bin/python -m pytest -q   # 40 passed on 1.24.14
 ```
 
 ## Layout
@@ -24,6 +32,7 @@ pipx install .                        # exposes the pdf-booklet command
 | `booklet.py` | ordering, imposition, file handling, CLI, `--selftest` |
 | `main.py` | entry point; imports `booklet.main` |
 | `tests/test_booklet.py` | pytest: page math, grouping, margins, marks, CLI errors |
+| `examples/sample.pdf` | committed 8-page sample; `test_sample_pdf_builds` runs the CLI on it |
 | `pyproject.toml` | hatchling build, console script, ruff and pytest config |
 | `README.md` | user-facing usage and assembly instructions |
 
@@ -59,8 +68,8 @@ tested for g in {4, 8, 12, 20, 24, 40}. Signatures nest outward → inward.
 - **The printed `page scale` is real**, computed from the inset half, not a
   decorative constant. Adding a margin lowers it.
 - **`--split` overwrites** existing `<stem>-gN.pdf` files silently.
-- Tested with PyMuPDF 1.28.2 / Python 3.12; `requires-python = ">=3.9"` and
-  `pymupdf>=1.24`. Only long-stable PyMuPDF calls are used.
+- Verified on PyMuPDF 1.24.14 (the declared floor) and 1.28.2, Python 3.12;
+  `requires-python = ">=3.9"`. Only long-stable PyMuPDF calls are used.
 
 ## When editing
 

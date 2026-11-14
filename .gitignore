@@ -7,4 +7,5 @@ build/
 *.egg-info/
 .pytest_cache/
 .ruff_cache/
-*.pdf
+*-booklet.pdf
+*-booklet-g*.pdf
