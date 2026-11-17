@@ -26,3 +26,22 @@ Plan: 8/8 steps · dropped 0 · open 0
 Card: none (chat-only)
 Drift: spec drift — `spec.md`'s folder invariant predates `--out-dir` and now describes only the
 default; no evidence captured for p1–p8 (chat-only run outside pair).
+
+## page-numbers-bottom-right — shipped 2026-11-16
+Shipped: `--page-numbers` now draws each half's 7pt original page number in the **bottom-right**
+corner instead of the top-right. `_page_number` mirrors the old top rule and clamps the baseline 3pt
+above the trim so the font's descender stays on the sheet when there is no margin. x, the absolute
+numbering and the blank padding halves are unchanged; one test rewritten, one added for `--margin 0`,
+README and `--help` reworded.
+Decisions: none — the move is cosmetic, and the 2026-11-16 "absolute source page, never the position
+in the signature" decision still holds.
+Follow-ups: left halves still number at their half's right edge, which is the fold — mirror them to
+bottom-left if sewing crowds them; with `--crop-marks` the bottom-right corner tick shares the digit's
+corner.
+Plan: 6/6 steps · dropped 0 · open 0
+Card: none (chat-only)
+Drift: spec drift — `spec.md`'s `--page-numbers` invariant still names no corner; the pair close never
+wrote it. No decision drift; evidence in
+`docs/ai-daridev/evidence/2026-11-16-page-numbers-bottom-right/` (p1 and p5 screenshots, p2/p3/p6
+code lines).
+

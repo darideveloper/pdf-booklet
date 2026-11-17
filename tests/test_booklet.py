@@ -183,13 +183,15 @@ def test_page_numbers_drawn(tmp_path):
     # counter numbering the imposed pages instead would print 1 and 2 here.
     page = pymupdf.open(str(out_path))[0]
     slot = page.rect.width / 2
+    sh = page.rect.height
     margin = 5 * booklet.MM
     small = [s for s in _spans(page) if abs(s["size"] - booklet.PAGE_NUMBER_SIZE) < 0.1]
     assert [s["text"].strip() for s in small] == ["4", "1"]
     for i, span in enumerate(small):
-        x1, y1 = span["bbox"][2], span["bbox"][3]
+        x0, y0, x1, y1 = span["bbox"]
         assert abs(x1 - ((i + 1) * slot - 2)) < 3, (span["text"], x1)
-        assert y1 <= margin, (span["text"], y1)
+        assert y0 >= sh - margin, (span["text"], y0)  # inside the bottom band
+        assert y1 <= sh, (span["text"], y1)
 
     # A padded blank half gets no number: 6 pages at group 8 -> side A is 8|1.
     src6 = tmp_path / "n6.pdf"
@@ -201,6 +203,22 @@ def test_page_numbers_drawn(tmp_path):
     small = [s for s in _spans(doc[0]) if abs(s["size"] - booklet.PAGE_NUMBER_SIZE) < 0.1]
     assert [s["text"].strip() for s in small] == ["1"], small
     assert small[0]["bbox"][0] > slot  # the number belongs to the filled right half
+
+
+def test_page_number_keeps_bottom_without_margin(tmp_path):
+    src = tmp_path / "n4.pdf"
+    _numbered(src, 4)
+    out_path = tmp_path / "out.pdf"
+    booklet.build(str(src), str(out_path), group=4, page_numbers=True)
+
+    page = pymupdf.open(str(out_path))[0]
+    sh = page.rect.height
+    small = [s for s in _spans(page) if abs(s["size"] - booklet.PAGE_NUMBER_SIZE) < 0.1]
+    assert [s["text"].strip() for s in small] == ["4", "1"]
+    for span in small:
+        y0, y1 = span["bbox"][1], span["bbox"][3]
+        assert y0 >= 0 and y1 <= sh, (span["text"], span["bbox"])  # never clipped
+        assert y1 > sh - 12, (span["text"], y1)  # still at the bottom, not mid-page
 
 
 def test_crop_marks_need_margin(tmp_path, capsys):

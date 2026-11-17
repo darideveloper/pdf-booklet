@@ -135,10 +135,14 @@ def _crop_marks(page: pymupdf.Page, slot: float, sh: float, margin: float) -> No
 
 
 def _page_number(page: pymupdf.Page, number: int, right: float, margin: float) -> None:
-    """The source page's own number, small, in the half's top-right corner."""
+    """The source page's own number, small, in the half's bottom-right corner."""
     label = str(number)
     x = right - pymupdf.get_text_length(label, fontname="helv", fontsize=PAGE_NUMBER_SIZE)
-    page.insert_text((x, max(margin - 2, 8)), label, fontname="helv", fontsize=PAGE_NUMBER_SIZE)
+    # Mirror the top rule, but never lower than 3pt above the trim: with no
+    # margin the font's descender would otherwise fall off the sheet.
+    height = page.rect.height
+    y = min(height - max(margin - 2, 8) + PAGE_NUMBER_SIZE, height - 3)
+    page.insert_text((x, y), label, fontname="helv", fontsize=PAGE_NUMBER_SIZE)
 
 
 def impose_into(
@@ -570,7 +574,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument(
         "--page-numbers",
         action="store_true",
-        help="print each half's original page number, 7pt, in its top-right corner",
+        help="print each half's original page number, 7pt, in its bottom-right corner",
     )
     ap.add_argument(
         "--split", action="store_true", help="write one PDF per group instead of a single file"
