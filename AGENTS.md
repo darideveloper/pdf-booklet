@@ -95,8 +95,8 @@ tested for g in {4, 8, 12, 20, 24, 40}. Signatures nest outward → inward.
   README options list.
 - Prefer `print(..., file=sys.stderr)` for warnings; stdout carries the manifest.
 
-<!-- ai-daridev:start -->
-Work is tracked with the `ai-daridev` skills, invoked manually: backlog → story → pair → review →
-archive. This directory is the root: read and write repo memory only in `docs/ai-daridev/`
-(`spec.md`, `decisions.md`, `log.md`). The nearest `AGENTS.md` holding this block wins.
-<!-- ai-daridev:end -->
+<!-- daridev:start -->
+Work is tracked with the `daridev` skills, invoked manually: plan → pair → review → archive.
+This directory is the root: read and write repo memory only in `docs/records/`
+(`spec.md`, `log.md`, `evidence/`). The nearest `AGENTS.md` holding this block wins.
+<!-- daridev:end -->
