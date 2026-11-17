@@ -17,17 +17,33 @@ A4 sources behave the same way: `half` → A4 landscape, A5 finished (70.7 %);
 
 ## Install
 
-```bash
-pipx install .          # or: pip install .
-pdf-booklet book.pdf
-```
-
-Running it straight from the checkout needs nothing but PyMuPDF:
+Python 3.9+ and PyMuPDF. Create the venv once, then activate it in any shell
+where you use the tool:
 
 ```bash
-pip install -r requirements.txt
-python3 main.py book.pdf       # main.py and booklet.py are the same CLI
+python3 -m venv venv
+source venv/bin/activate
+pip install -e ".[dev]"        # pymupdf + pytest + ruff, editable
+python main.py --selftest      # sanity check, writes nothing
 ```
+
+`venv/` is gitignored. Activation lasts for that shell only — a new terminal
+needs `source venv/bin/activate` again — and while it is active `python`, `pip`,
+`pytest` and `pdf-booklet` all resolve inside `venv/`. `deactivate` undoes it.
+
+Not activating is the same thing, just more typing:
+
+```bash
+venv/bin/python main.py book.pdf
+```
+
+With `pip install -e .` in place you also get the console script, usable from
+any directory: `pdf-booklet book.pdf`. For a global, checkout-independent
+install instead, use `pipx install .`.
+
+The venv only has to provide PyMuPDF for `main.py` to run; if you prefer not to
+install the package, `pip install -r requirements.txt` into a bare venv is
+enough.
 
 ## The rule
 
@@ -58,20 +74,22 @@ cover sheet, which is a different binding.
 
 ## Usage
 
+Commands below assume the venv from Install is active (`python` = `venv/bin/python`).
+
 ```bash
-python3 main.py ./my-pdfs/                   # every PDF -> *-booklet.pdf, same folder
-python3 main.py ./my-pdfs/ --suffix=-book    # custom output suffix
-python3 main.py book.pdf                     # single file: book-booklet.pdf, groups of 20
-python3 main.py examples/sample.pdf          # the 8-page sample in this repo
-python3 main.py book.pdf -m full             # full-size pages on Tabloide
-python3 main.py book.pdf --split             # one PDF per group
-python3 main.py book.pdf --balance           # even signatures instead of 20+20+8
-python3 main.py book.pdf --margin 5          # 5 mm inset on every half
-python3 main.py book.pdf --margin 5 --crop-marks   # plus trim/fold ticks
-python3 main.py book.pdf --rotate-back       # if duplex prints backs upside down
-python3 main.py book.pdf --fold-line         # faint dashed line down the middle
-python3 main.py book.pdf --margin 5 --page-numbers   # page number in each half's top-right
-python3 main.py --selftest                   # page math + round-trip, writes nothing
+python main.py ./my-pdfs/                   # every PDF -> *-booklet.pdf, same folder
+python main.py ./my-pdfs/ --suffix=-book    # custom output suffix
+python main.py book.pdf                     # single file: book-booklet.pdf, groups of 20
+python main.py examples/sample.pdf          # the 8-page sample in this repo
+python main.py book.pdf -m full             # full-size pages on Tabloide
+python main.py book.pdf --split             # one PDF per group
+python main.py book.pdf --balance           # even signatures instead of 20+20+8
+python main.py book.pdf --margin 5          # 5 mm inset on every half
+python main.py book.pdf --margin 5 --crop-marks   # plus trim/fold ticks
+python main.py book.pdf --rotate-back       # if duplex prints backs upside down
+python main.py book.pdf --fold-line         # faint dashed line down the middle
+python main.py book.pdf --margin 5 --page-numbers   # page number in each half's top-right
+python main.py --selftest                   # page math + round-trip, writes nothing
 ```
 
 Give it a folder and every PDF inside is imposed, output written next to each
@@ -170,19 +188,21 @@ along the spine.
 
 ## Development
 
+With the venv active (see Install):
+
 ```bash
 pip install -e ".[dev]"
 pytest -q
 ruff check . && ruff format --check .
-python3 booklet.py --selftest
+python booklet.py --selftest
 ```
 
 `examples/sample.pdf` is an 8-page committed sample used by the suite. To check
-the declared PyMuPDF floor without CI:
+the declared PyMuPDF floor without CI, in a throwaway venv:
 
 ```bash
 python3 -m venv /tmp/pymupdf-124 && /tmp/pymupdf-124/bin/pip install "pymupdf==1.24.*" pytest
-/tmp/pymupdf-124/bin/python -m pytest -q
+/tmp/pymupdf-124/bin/python -m pytest -q   # 48 passed on 1.24.14
 ```
 
 License: MIT.

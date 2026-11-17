@@ -7,23 +7,32 @@ the source page.
 
 ## Commands
 
+Everything runs inside the checkout's `venv/` (gitignored). Activate it once per
+shell — the tool calls below use a fresh shell each time, so either `source
+venv/bin/activate` first or spell out `venv/bin/python`:
+
 ```bash
-python3 main.py book.pdf              # same CLI as python3 booklet.py
-python3 main.py ./pdfs/               # every PDF in the folder, output in place
-python3 booklet.py book.pdf
-python3 main.py examples/sample.pdf   # 8-page sample committed in the repo
-python3 booklet.py --selftest         # zero-dependency smoke test, writes nothing
-pytest -q                             # full suite
+source venv/bin/activate              # once per shell
+pip install -e ".[dev]"               # pymupdf + pytest + ruff, editable
+python main.py book.pdf               # same CLI as python booklet.py
+python main.py ./pdfs/                # every PDF in the folder, output in place
+python booklet.py book.pdf
+python main.py examples/sample.pdf    # 8-page sample committed in the repo
+python booklet.py --selftest          # zero-dependency smoke test, writes nothing
+pytest -q                             # full suite (48 tests)
 ruff check . && ruff format --check . # lint and formatting
-pip install -e ".[dev]"               # dev install (pytest + ruff)
-pipx install .                        # exposes the pdf-booklet command
+pdf-booklet book.pdf                  # console script, any directory
+pipx install .                        # global install without this checkout
 ```
+
+Without activation the same commands are `venv/bin/python main.py …`,
+`venv/bin/pytest -q`, `venv/bin/ruff …`.
 
 Dependency floor check (no CI, run by hand when touching PyMuPDF calls):
 
 ```bash
 python3 -m venv /tmp/pymupdf-124 && /tmp/pymupdf-124/bin/pip install "pymupdf==1.24.*" pytest
-/tmp/pymupdf-124/bin/python -m pytest -q   # 40 passed on 1.24.14
+/tmp/pymupdf-124/bin/python -m pytest -q   # 48 passed on 1.24.14
 ```
 
 ## Layout
@@ -74,8 +83,9 @@ tested for g in {4, 8, 12, 20, 24, 40}. Signatures nest outward → inward.
 - **The printed `page scale` is real**, computed from the inset half, not a
   decorative constant. Adding a margin lowers it.
 - **`--split` overwrites** existing `<stem>-gN.pdf` files silently.
-- Verified on PyMuPDF 1.24.14 (the declared floor) and 1.28.2, Python 3.12;
-  `requires-python = ">=3.9"`. Only long-stable PyMuPDF calls are used.
+- Verified on PyMuPDF 1.24.14 (the declared floor) and 2.1 (1.28.6 core),
+  Python 3.12; `requires-python = ">=3.9"`, `dependencies = ["pymupdf>=1.24"]`.
+  Only long-stable PyMuPDF calls are used; `import pymupdf`, never `fitz`.
 
 ## When editing
 
@@ -84,3 +94,9 @@ tested for g in {4, 8, 12, 20, 24, 40}. Signatures nest outward → inward.
 - New CLI behaviour needs a test in `tests/test_booklet.py` and a line in the
   README options list.
 - Prefer `print(..., file=sys.stderr)` for warnings; stdout carries the manifest.
+
+<!-- ai-daridev:start -->
+Work is tracked with the `ai-daridev` skills, invoked manually: backlog → story → pair → review →
+archive. This directory is the root: read and write repo memory only in `docs/ai-daridev/`
+(`spec.md`, `decisions.md`, `log.md`). The nearest `AGENTS.md` holding this block wins.
+<!-- ai-daridev:end -->
