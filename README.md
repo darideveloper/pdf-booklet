@@ -79,6 +79,7 @@ Commands below assume the venv from Install is active (`python` = `venv/bin/pyth
 ```bash
 python main.py ./my-pdfs/                   # every PDF -> *-booklet.pdf, same folder
 python main.py ./my-pdfs/ --suffix=-book    # custom output suffix
+python main.py ./my-pdfs/ --out-dir ./print # whole batch into ./print (created if missing)
 python main.py book.pdf                     # single file: book-booklet.pdf, groups of 20
 python main.py examples/sample.pdf          # the 8-page sample in this repo
 python main.py book.pdf -m full             # full-size pages on Tabloide
@@ -98,9 +99,17 @@ already carrying the suffix (`*-booklet.pdf`, `*-booklet-gN.pdf`) are skipped, s
 running it twice never produces `book-booklet-booklet.pdf`. If one file fails,
 the rest are still converted and the run exits `1`.
 
+Add `--out-dir DIR` to collect the whole batch somewhere else instead — the
+folder is created if it does not exist, and names are unchanged, so `--suffix`
+and `--split` still apply. A single PDF accepts `--out-dir` too; `-o/--out`
+wins when both are given. Every target is flat: two source folders holding the
+same file name sent to one out-dir overwrite each other, just as `--split`
+already overwrites `<stem>-gN.pdf`.
+
 | option | meaning |
 |---|---|
-| `-o/--out` | output path; single file only |
+| `-o/--out` | output path; single file only, wins over `--out-dir` |
+| `--out-dir DIR` | write every output into DIR, created if missing (folder or single file) |
 | `--suffix TEXT` | appended to each output name (default `-booklet`; use `--suffix=-x` when it starts with a dash) |
 | `-g/--group N` | max source pages per signature, multiple of 4 (default 20) |
 | `-m/--mode full\|half` | sheet geometry; `half` is the default |

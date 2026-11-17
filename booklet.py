@@ -210,6 +210,16 @@ def output_for(src: Path, suffix: str) -> Path:
     return src.with_name(f"{src.stem}{suffix}{src.suffix}")
 
 
+def out_dir(value: str) -> Path:
+    """The chosen output folder, created if it does not exist yet."""
+    folder = Path(value)
+    try:
+        folder.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise SystemExit(f"error: cannot create {folder}: {exc}") from None
+    return folder
+
+
 def _is_generated(path: Path, suffix: str) -> bool:
     """True for a file this tool wrote, so a re-run does not nest outputs."""
     stem = path.stem
@@ -509,6 +519,11 @@ def main(argv: list[str] | None = None) -> int:
         "-o", "--out", help="output path for a single file (default: <stem><suffix>.pdf)"
     )
     ap.add_argument(
+        "--out-dir",
+        metavar="DIR",
+        help="collect outputs in DIR, created if missing (folder input, or one PDF; -o wins)",
+    )
+    ap.add_argument(
         "-g",
         "--group",
         type=_group_arg,
@@ -593,10 +608,11 @@ def main(argv: list[str] | None = None) -> int:
             print(f"skipping {skipped} generated file(s) in {src}", file=sys.stderr)
         if not files:
             raise SystemExit(f"error: no PDFs to convert in {src}")
+        dest = out_dir(args.out_dir) if args.out_dir else src
         failed = 0
         for path in files:
             try:
-                _convert(path, output_for(path, args.suffix), args)
+                _convert(path, dest / output_for(path, args.suffix).name, args)
             except SystemExit as exc:
                 failed += 1
                 print(exc.code if isinstance(exc.code, str) else "error", file=sys.stderr)
@@ -607,7 +623,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if not src.is_file():
         raise SystemExit(f"error: no such file: {src}")
-    _convert(src, Path(args.out) if args.out else output_for(src, args.suffix), args)
+    if args.out:
+        out = Path(args.out)
+    else:
+        dest = out_dir(args.out_dir) if args.out_dir else src.parent
+        out = dest / output_for(src, args.suffix).name
+    _convert(src, out, args)
     return 0
 
 

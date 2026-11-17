@@ -322,6 +322,58 @@ def test_folder_rejects_out(tmp_path):
         booklet.main([str(tmp_path), "-o", "x.pdf"])
 
 
+def test_folder_out_dir_created_and_filled(tmp_path):
+    src = tmp_path / "src"
+    src.mkdir()
+    _numbered(src / "a.pdf", 4)
+    _numbered(src / "b.pdf", 4)
+    dest = tmp_path / "out" / "nested"
+
+    assert booklet.main([str(src), "--out-dir", str(dest)]) == 0
+    assert (dest / "a-booklet.pdf").is_file()
+    assert (dest / "b-booklet.pdf").is_file()
+    assert not (src / "a-booklet.pdf").exists()
+
+
+def test_folder_split_out_dir(tmp_path):
+    src = tmp_path / "src"
+    src.mkdir()
+    _numbered(src / "a.pdf", 4)
+
+    assert booklet.main([str(src), "--split", "--out-dir", str(tmp_path / "out")]) == 0
+    assert (tmp_path / "out" / "a-booklet-g1.pdf").is_file()
+
+
+def test_single_file_out_dir(tmp_path):
+    _numbered(tmp_path / "a.pdf", 4)
+    dest = tmp_path / "out"
+
+    assert booklet.main([str(tmp_path / "a.pdf"), "--out-dir", str(dest)]) == 0
+    assert (dest / "a-booklet.pdf").is_file()
+    assert not (tmp_path / "a-booklet.pdf").exists()
+
+
+def test_out_wins_over_out_dir(tmp_path):
+    _numbered(tmp_path / "a.pdf", 4)
+    dest = tmp_path / "out"
+    argv = [str(tmp_path / "a.pdf"), "-o", str(tmp_path / "x.pdf"), "--out-dir", str(dest)]
+
+    assert booklet.main(argv) == 0
+    assert (tmp_path / "x.pdf").is_file()
+    assert not dest.exists()
+
+
+def test_out_dir_that_is_a_file(tmp_path):
+    src = tmp_path / "src"
+    src.mkdir()
+    _numbered(src / "a.pdf", 4)
+    blocker = tmp_path / "blocker"
+    blocker.write_text("not a folder")
+
+    with pytest.raises(SystemExit, match="cannot create"):
+        booklet.main([str(src), "--out-dir", str(blocker)])
+
+
 def test_folder_without_pdfs(tmp_path):
     (tmp_path / "notes.txt").write_text("hi")
     with pytest.raises(SystemExit, match="no PDFs"):
