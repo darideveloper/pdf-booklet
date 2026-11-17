@@ -167,6 +167,42 @@ def test_crop_marks_drawn(tmp_path):
     assert len(page.get_drawings()) == 18
 
 
+def test_page_numbers_drawn(tmp_path):
+    src = tmp_path / "n4.pdf"
+    _numbered(src, 4)
+
+    plain = tmp_path / "plain.pdf"
+    booklet.build(str(src), str(plain), group=4, margin_mm=5)
+    page = pymupdf.open(str(plain))[0]
+    assert [s for s in _spans(page) if abs(s["size"] - booklet.PAGE_NUMBER_SIZE) < 0.1] == []
+
+    out_path = tmp_path / "out.pdf"
+    booklet.build(str(src), str(out_path), group=4, margin_mm=5, page_numbers=True)
+
+    # Sheet 1 side A is the outer face: source page 4 left, page 1 right. A
+    # counter numbering the imposed pages instead would print 1 and 2 here.
+    page = pymupdf.open(str(out_path))[0]
+    slot = page.rect.width / 2
+    margin = 5 * booklet.MM
+    small = [s for s in _spans(page) if abs(s["size"] - booklet.PAGE_NUMBER_SIZE) < 0.1]
+    assert [s["text"].strip() for s in small] == ["4", "1"]
+    for i, span in enumerate(small):
+        x1, y1 = span["bbox"][2], span["bbox"][3]
+        assert abs(x1 - ((i + 1) * slot - 2)) < 3, (span["text"], x1)
+        assert y1 <= margin, (span["text"], y1)
+
+    # A padded blank half gets no number: 6 pages at group 8 -> side A is 8|1.
+    src6 = tmp_path / "n6.pdf"
+    _numbered(src6, 6)
+    padded = tmp_path / "padded.pdf"
+    booklet.build(str(src6), str(padded), group=8, margin_mm=5, page_numbers=True)
+    doc = pymupdf.open(str(padded))
+    slot = doc[0].rect.width / 2
+    small = [s for s in _spans(doc[0]) if abs(s["size"] - booklet.PAGE_NUMBER_SIZE) < 0.1]
+    assert [s["text"].strip() for s in small] == ["1"], small
+    assert small[0]["bbox"][0] > slot  # the number belongs to the filled right half
+
+
 def test_crop_marks_need_margin(tmp_path, capsys):
     src = tmp_path / "n4.pdf"
     _numbered(src, 4)
@@ -251,6 +287,16 @@ def test_folder_converts_every_pdf(tmp_path):
     assert (tmp_path / "a-booklet.pdf").is_file()
     assert (tmp_path / "b-booklet.pdf").is_file()
     assert (tmp_path / "a.pdf").is_file()
+
+
+def test_folder_passes_page_numbers(tmp_path):
+    _numbered(tmp_path / "a.pdf", 4)
+    _numbered(tmp_path / "b.pdf", 4)
+    assert booklet.main([str(tmp_path), "--page-numbers"]) == 0
+    for name in ("a-booklet.pdf", "b-booklet.pdf"):
+        page = pymupdf.open(str(tmp_path / name))[0]
+        sizes = [round(s["size"], 1) for s in _spans(page)]
+        assert sizes.count(float(booklet.PAGE_NUMBER_SIZE)) == 2, (name, sizes)
 
 
 def test_folder_skips_generated_files(tmp_path):

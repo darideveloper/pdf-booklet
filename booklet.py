@@ -32,6 +32,7 @@ __version__ = "0.1.0"
 
 MM = 72 / 25.4  # points per millimetre
 CROP_TICK = 3 * MM  # length of the ticks drawn by --crop-marks
+PAGE_NUMBER_SIZE = 7  # points, for the numbers drawn by --page-numbers
 DEFAULT_SUFFIX = "-booklet"  # appended to every output name
 
 MANUAL_DUPLEX = """\
@@ -133,6 +134,13 @@ def _crop_marks(page: pymupdf.Page, slot: float, sh: float, margin: float) -> No
         page.draw_line((slot, y), (slot, y + dy * CROP_TICK), color=ink, width=0.3)
 
 
+def _page_number(page: pymupdf.Page, number: int, right: float, margin: float) -> None:
+    """The source page's own number, small, in the half's top-right corner."""
+    label = str(number)
+    x = right - pymupdf.get_text_length(label, fontname="helv", fontsize=PAGE_NUMBER_SIZE)
+    page.insert_text((x, max(margin - 2, 8)), label, fontname="helv", fontsize=PAGE_NUMBER_SIZE)
+
+
 def impose_into(
     out: pymupdf.Document,
     src: pymupdf.Document,
@@ -143,6 +151,7 @@ def impose_into(
     rotate_back: bool = False,
     fold_line: bool = False,
     crop_marks: bool = False,
+    page_numbers: bool = False,
 ) -> None:
     """Append the printed sides of one signature to ``out``."""
     sw, sh = sheet
@@ -157,6 +166,8 @@ def impose_into(
                     continue  # padding: leave the half blank
                 area = pymupdf.Rect(i * slot + margin, margin, (i + 1) * slot - margin, sh - margin)
                 page.show_pdf_page(area, src, group_pages[pno - 1])
+                if page_numbers:
+                    _page_number(page, group_pages[pno - 1] + 1, (i + 1) * slot - 2, margin)
             if crop_marks:
                 _crop_marks(page, slot, sh, margin)
             if fold_line:
@@ -225,6 +236,7 @@ def build(
     rotate_back: bool = False,
     fold_line: bool = False,
     crop_marks: bool = False,
+    page_numbers: bool = False,
     split: bool = False,
     password: str | None = None,
 ) -> list[tuple[int, int, list[int], int]]:
@@ -266,16 +278,17 @@ def build(
         crop_marks = False
 
     out_file = Path(out_path)
+    options = (sheet, margin, rotate_back, fold_line, crop_marks, page_numbers)
     if split:
         for k, (_, _, pages, padded) in enumerate(groups, 1):
             out = pymupdf.open()
-            impose_into(out, src, pages, padded, sheet, margin, rotate_back, fold_line, crop_marks)
+            impose_into(out, src, pages, padded, *options)
             _save_pdf(out, out_file.with_name(f"{out_file.stem}-g{k}{out_file.suffix}"))
             out.close()
     else:
         out = pymupdf.open()
         for _, _, pages, padded in groups:
-            impose_into(out, src, pages, padded, sheet, margin, rotate_back, fold_line, crop_marks)
+            impose_into(out, src, pages, padded, *options)
         _save_pdf(out, out_file)
         out.close()
 
@@ -290,6 +303,7 @@ def build(
         mode=mode,
         split=split,
         balance=balance,
+        page_numbers=page_numbers,
     )
     src.close()
     return groups
@@ -316,6 +330,7 @@ def _manifest(
     mode: str,
     split: bool,
     balance: bool,
+    page_numbers: bool = False,
 ) -> None:
     sw, sh = sheet
     pages = sum(len(p) for _, _, p, _ in groups)
@@ -324,6 +339,7 @@ def _manifest(
     print(
         f"mode   : {mode}  sheet {sw:.0f}x{sh:.0f}pt ({sw / 72:.2f}x{sh / 72:.2f}in)"
         f"  margin {margin / MM:.1f}mm  page scale {scale * 100:.1f}%"
+        f"{'  page numbers on' if page_numbers else ''}"
     )
     print(f"groups : {len(groups)} signature(s){' balanced' if balance else ''}")
     target = out_path
@@ -476,6 +492,7 @@ def _convert(src: Path, out: Path, args: argparse.Namespace) -> None:
         rotate_back=args.rotate_back,
         fold_line=args.fold_line,
         crop_marks=args.crop_marks,
+        page_numbers=args.page_numbers,
         split=args.split,
         password=args.password,
     )
@@ -534,6 +551,11 @@ def main(argv: list[str] | None = None) -> int:
         "--crop-marks",
         action="store_true",
         help="draw corner ticks and centre-fold ticks (needs --margin >= 3mm)",
+    )
+    ap.add_argument(
+        "--page-numbers",
+        action="store_true",
+        help="print each half's original page number, 7pt, in its top-right corner",
     )
     ap.add_argument(
         "--split", action="store_true", help="write one PDF per group instead of a single file"

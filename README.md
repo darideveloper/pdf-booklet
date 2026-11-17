@@ -70,6 +70,7 @@ python3 main.py book.pdf --margin 5          # 5 mm inset on every half
 python3 main.py book.pdf --margin 5 --crop-marks   # plus trim/fold ticks
 python3 main.py book.pdf --rotate-back       # if duplex prints backs upside down
 python3 main.py book.pdf --fold-line         # faint dashed line down the middle
+python3 main.py book.pdf --margin 5 --page-numbers   # page number in each half's top-right
 python3 main.py --selftest                   # page math + round-trip, writes nothing
 ```
 
@@ -89,6 +90,7 @@ the rest are still converted and the run exits `1`.
 | `--balance` | spread pages evenly over the signatures |
 | `--crop-marks` | corner and centre-fold ticks; needs `--margin` ≥ 3 mm |
 | `--fold-line` | dashed centre line, independent of `--crop-marks` |
+| `--page-numbers` | each half's original page number, 7pt, in its top-right corner |
 | `--rotate-back` | rotate back sides 180° for long-edge duplex drivers |
 | `--split` | one PDF per signature |
 | `--password` | password for an encrypted PDF |
@@ -102,6 +104,12 @@ A **margined** run, for printers that cannot print to the edge: content is
 inset by `--margin`, so facing pages get a gutter of twice that margin, and the
 reported page scale drops accordingly. `--crop-marks` draws 3 mm ticks at the
 corners of each half plus ticks on the fold.
+
+`--page-numbers` prints each half's **original PDF page number** — not the
+position in the signature — so a folded copy can always be put back in order:
+signature 3 starts at 41 and says 41. Numbers are 7pt and live in the margin
+band, so pair them with `--margin 5`; with no margin they sit 2pt from the trim
+and may touch the content.
 
 ## Printing
 
